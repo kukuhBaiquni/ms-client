@@ -1,8 +1,8 @@
 import { useRef, useEffect } from "react";
 import { Socket, io } from "socket.io-client";
 import useSpeechToText from "react-hook-speech-to-text";
-import { useMicVAD } from "@ricky0123/vad-react";
-import { useDebouncedCallback } from "use-debounce";
+// import { useMicVAD } from "@ricky0123/vad-react";
+// import { useDebouncedCallback } from "use-debounce";
 
 const API_URL = "http://127.0.0.1:3001";
 type Messages = {
@@ -127,10 +127,10 @@ export default function App() {
         {isRecording ? "Stop Recording" : "Start Recording"}
       </button>
       <ul>
-        {results.map((result) => (
-          <li key={result.timestamp}>
-            {result.timestamp}
-            {result.transcript}
+        {results.map((result, i) => (
+          <li key={i}>
+            {typeof result === "string" ? result : result.timestamp}
+            {typeof result === "string" ? result : result.transcript}
           </li>
         ))}
         {interimResult && <li>{interimResult}</li>}
