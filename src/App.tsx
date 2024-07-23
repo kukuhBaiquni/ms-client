@@ -31,7 +31,7 @@ export default function App() {
     isRecording,
     results,
     startSpeechToText,
-    stopSpeechToText,
+    // stopSpeechToText,
   } = useSpeechToText({
     continuous: true,
     useLegacyResults: false,
