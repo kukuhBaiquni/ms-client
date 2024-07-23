@@ -4,7 +4,7 @@ import useSpeechToText from "react-hook-speech-to-text";
 // import { useMicVAD } from "@ricky0123/vad-react";
 // import { useDebouncedCallback } from "use-debounce";
 
-const API_URL = "http://127.0.0.1:3001";
+const API_URL = import.meta.env.VITE_API_URL; // "http://127.0.0.1:3001";
 type Messages = {
   role: "system" | "user";
   content: string;
