@@ -1,7 +1,8 @@
 import { useRef, useEffect } from "react";
 import { Socket, io } from "socket.io-client";
 import useSpeechToText from "react-hook-speech-to-text";
-// import { useMicVAD } from "@ricky0123/vad-react";
+import { useMicVAD } from "@ricky0123/vad-react";
+import { useDebouncedCallback } from "use-debounce";
 
 const API_URL = "http://127.0.0.1:3001";
 type Messages = {
@@ -11,23 +12,16 @@ type Messages = {
 
 export default function App() {
   const socketRef = useRef<Socket>();
-  const audioContextRef = useRef<AudioContext | null>(null);
-  // const sourceRef = useRef(null)
-  const bufferQueue = useRef<ArrayBufferLike[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const messageRef = useRef<Messages[]>([]);
+  const sliceTotal = useRef(0);
 
   // useMicVAD({
   //   startOnLoad: true,
   //   onSpeechStart: () => {
   //     console.log("START");
-  //     if (!isRecording) {
-  //       startSpeechToText();
-  //     }
-  //   },
-  //   onSpeechEnd: () => {
-  //     console.log("STOP");
-  //     socketRef.current!.emit("ON_SPEECH_END", results);
+  //     audioRef.current?.pause();
+  //     audioRef.current = null;
   //   },
   // });
 
@@ -41,89 +35,86 @@ export default function App() {
   } = useSpeechToText({
     continuous: true,
     useLegacyResults: false,
+    googleApiKey: "AIzaSyApd5D0KEiQIl6GO0fxi7TkfAVHXk2bzLA",
+    crossBrowser: true,
+    timeout: 3000,
   });
 
   const onStopSpeech = () => {
-    const lastMessage = results[results.length - 1];
-    const messageContent =
-      typeof lastMessage === "string" ? lastMessage : lastMessage.transcript;
-    const newMessage = [
-      ...messageRef.current,
-      {
+    console.log("RESULTS", results);
+    console.log("INTERIM", interimResult);
+    audioRef.current = null;
+    if (interimResult) {
+      messageRef.current.push({
         role: "user",
-        content: messageContent,
-      },
-    ] as Messages[];
-    console.log("USER QUESTION", newMessage);
-    messageRef.current = newMessage;
-    socketRef.current!.emit("ON_SPEECH_END", newMessage);
+        content: interimResult,
+      });
+    } else {
+      const lastMessage = results[results.length - 1];
+      const lastMessageContent =
+        typeof lastMessage === "string" ? lastMessage : lastMessage?.transcript;
+      if (lastMessageContent) {
+        messageRef.current.push({
+          role: "user",
+          content: results
+            .map((item) => (typeof item === "string" ? item : item.transcript))
+            .slice(sliceTotal.current)
+            .join(" "),
+        });
+      }
+    }
     stopSpeechToText();
+    sliceTotal.current = results.length;
+    socketRef.current!.emit("ON_SPEECH_END", messageRef.current);
   };
+
+  // const requestAnswer = useDebouncedCallback(onStopSpeech, 3000);
+
+  // useEffect(() => {
+  //   requestAnswer();
+  //   const player = document.getElementById("player");
+  //   player?.setAttribute("src", "");
+  //   console.log("INTERUPT");
+  // }, [results, interimResult, requestAnswer]);
 
   const onStartSpeech = () => {
     audioRef.current?.pause();
     startSpeechToText();
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const playAudio = () => {
-    console.log("AUDIO PLAY");
-    if (
-      bufferQueue.current.length === 0 ||
-      audioContextRef.current?.state !== "running"
-    ) {
-      return;
-    }
-    const audioBuffer = bufferQueue.current.shift();
-    console.log("AUDIO BUFFER", bufferQueue.current);
-    audioContextRef.current.decodeAudioData(
-      audioBuffer as ArrayBufferLike,
-      (buffer) => {
-        const source = audioContextRef.current!.createBufferSource();
-        console.log("SOURCE___", source);
-        source!.buffer = buffer;
-        source.connect(audioContextRef.current?.destination as AudioNode);
-        source.start(0);
+  // const debounceStartSpeech = useDebouncedCallback(startSpeechToText, 1000);
 
-        source.onended = () => {
-          playAudio();
-        };
-      }
-    );
-  };
+  // useEffect(() => {
+  //   console.log("IS RECORDING?", isRecording);
+  //   if (!isRecording) {
+  //     debounceStartSpeech();
+  //   }
+  // }, [isRecording, debounceStartSpeech]);
 
   useEffect(() => {
-    audioContextRef.current = new window.AudioContext();
     socketRef.current = io(API_URL);
-
-    socketRef.current.on("SPEECH_RESULT_QUEUE", (data) => {
-      console.log("QUEUE", data);
-      const audioBuffer = new Uint8Array(data).buffer;
-      console.log("BUFFER____", audioBuffer);
-      bufferQueue.current.push(audioBuffer);
-      playAudio();
+    socketRef.current.on("SPEECH_RESULT", async (data) => {
+      const audioBlob = new Blob([data.buffer], { type: "audio/wav" });
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
+      const newMessage = [
+        ...messageRef.current,
+        {
+          role: "system",
+          content: data.text,
+        },
+      ] as Messages[];
+      console.log("REsPONSE BOT", newMessage);
+      messageRef.current = newMessage;
+      audioRef.current = audio;
+      // audioRef.current.play();
+      const player = document.getElementById("player");
+      if (player) {
+        player.setAttribute("src", url);
+      }
     });
-
-    // socketRef.current.on("SPEECH_RESULT", async (data) => {
-    //   const audioBlob = new Blob([data.buffer], { type: "audio/wav" });
-    //   const url = URL.createObjectURL(audioBlob);
-    //   const audio = new Audio(url);
-    //   const newMessage = [
-    //     ...messageRef.current,
-    //     {
-    //       role: "user",
-    //       content: data.text,
-    //     },
-    //   ] as Messages[];
-    //   console.log("REsPONSE BOT", newMessage);
-    //   messageRef.current = newMessage;
-    //   audio.play();
-    //   audioRef.current = audio;
-    //   // console.log("DATA RESULT", data);
-    //   // setSpeech(data.choices[0]?.message?.content);
-    //   // querySpeechResult.refetch();
-    // });
-  }, [playAudio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     return <p>Web Speech API is not available in this browser</p>;
@@ -137,14 +128,21 @@ export default function App() {
       </button>
       <ul>
         {results.map((result) => (
-          <li key={typeof result === "string" ? result : result.timestamp}>
-            {typeof result === "string" ? result : result.timestamp}
-            {typeof result === "string" ? result : result.transcript}
+          <li key={result.timestamp}>
+            {result.timestamp}
+            {result.transcript}
           </li>
         ))}
         {interimResult && <li>{interimResult}</li>}
       </ul>
-      <audio ref={audioRef} autoPlay playsInline className="hidden"></audio>
+      <audio
+        id="player"
+        ref={audioRef}
+        autoPlay
+        playsInline
+        controls
+        hidden
+      ></audio>
     </div>
   );
 }

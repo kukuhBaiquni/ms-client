@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google-cloud/speech": "^6.6.1",
     "@ricky0123/vad-react": "^0.0.24",
     "@ricky0123/vad-web": "^0.0.18",
     "axios": "^1.7.2",
@@ -18,7 +19,8 @@
     "react-dom": "^18.3.1",
     "react-hook-speech-to-text": "^0.8.0",
     "react-query": "^3.39.3",
-    "socket.io-client": "^4.7.5"
+    "socket.io-client": "^4.7.5",
+    "use-debounce": "^10.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
