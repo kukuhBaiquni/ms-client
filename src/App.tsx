@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import { Socket, io } from "socket.io-client";
 import useSpeechToText from "react-hook-speech-to-text";
 // import { useMicVAD } from "@ricky0123/vad-react";
-// import { useDebouncedCallback } from "use-debounce";
+import { useDebouncedCallback } from "use-debounce";
 
 const API_URL = import.meta.env.VITE_API_URL; // "http://127.0.0.1:3001";
 type Messages = {
@@ -63,38 +63,35 @@ export default function App() {
         });
       }
     }
-    stopSpeechToText();
     sliceTotal.current = results.length;
     socketRef.current!.emit("ON_SPEECH_END", messageRef.current);
   };
 
-  // const requestAnswer = useDebouncedCallback(onStopSpeech, 3000);
+  const requestAnswer = useDebouncedCallback(onStopSpeech, 3000);
 
-  // useEffect(() => {
-  //   requestAnswer();
-  //   const player = document.getElementById("player");
-  //   player?.setAttribute("src", "");
-  //   console.log("INTERUPT");
-  // }, [results, interimResult, requestAnswer]);
+  useEffect(() => {
+    requestAnswer();
+    const player = document.getElementById("player");
+    player?.setAttribute("src", "");
+    console.log("INTERUPT");
+  }, [results, interimResult, requestAnswer]);
 
   const onStartSpeech = () => {
     audioRef.current?.pause();
     startSpeechToText();
   };
 
-  // const debounceStartSpeech = useDebouncedCallback(startSpeechToText, 1000);
-
-  // useEffect(() => {
-  //   console.log("IS RECORDING?", isRecording);
-  //   if (!isRecording) {
-  //     debounceStartSpeech();
-  //   }
-  // }, [isRecording, debounceStartSpeech]);
+  const debounceStartSpeech = useDebouncedCallback(startSpeechToText, 1000);
 
   useEffect(() => {
-    socketRef.current = io(API_URL, {
-      withCredentials: true,
-    });
+    console.log("IS RECORDING?", isRecording);
+    if (!isRecording) {
+      debounceStartSpeech();
+    }
+  }, [isRecording, debounceStartSpeech]);
+
+  useEffect(() => {
+    socketRef.current = io(API_URL);
     socketRef.current.on("SPEECH_RESULT", async (data) => {
       const audioBlob = new Blob([data.buffer], { type: "audio/wav" });
       const url = URL.createObjectURL(audioBlob);
