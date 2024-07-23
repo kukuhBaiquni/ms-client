@@ -4,7 +4,7 @@ import useSpeechToText from "react-hook-speech-to-text";
 // import { useMicVAD } from "@ricky0123/vad-react";
 import { useDebouncedCallback } from "use-debounce";
 
-const API_URL = import.meta.env.VITE_API_URL; // "http://127.0.0.1:3001";
+// const API_URL = import.meta.env.VITE_API_URL; // "http://127.0.0.1:3001";
 type Messages = {
   role: "system" | "user";
   content: string;
@@ -91,7 +91,9 @@ export default function App() {
   }, [isRecording, debounceStartSpeech]);
 
   useEffect(() => {
-    socketRef.current = io(API_URL);
+    const url = new URLSearchParams(window.location.search);
+    const tunel = url.get("tunel");
+    socketRef.current = io(tunel as string);
     socketRef.current.on("SPEECH_RESULT", async (data) => {
       const audioBlob = new Blob([data.buffer], { type: "audio/wav" });
       const url = URL.createObjectURL(audioBlob);
