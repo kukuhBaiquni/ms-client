@@ -92,7 +92,9 @@ export default function App() {
   // }, [isRecording, debounceStartSpeech]);
 
   useEffect(() => {
-    socketRef.current = io(API_URL);
+    socketRef.current = io(API_URL, {
+      withCredentials: true,
+    });
     socketRef.current.on("SPEECH_RESULT", async (data) => {
       const audioBlob = new Blob([data.buffer], { type: "audio/wav" });
       const url = URL.createObjectURL(audioBlob);
