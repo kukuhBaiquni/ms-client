@@ -23,6 +23,9 @@ export default defineConfig({
       ],
     }),
   ],
+  optimizeDeps: {
+    exclude: ["onnxruntime-web"], // Exclude the problematic module from optimization
+  },
   server: {
     host: true,
   },
